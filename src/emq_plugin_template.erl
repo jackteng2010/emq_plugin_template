@@ -95,23 +95,13 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 ekaf_init(_Env) ->
-    %% Get parameters
-    {ok, Kafka} = application:get_env(emq_plugin_template, kafka),
-    BootstrapBroker = proplists:get_value(bootstrap_broker, Kafka),
-    PartitionStrategy= proplists:get_value(partition_strategy, Kafka),
-	BootstrapBrokerTopic = proplists:get_value(bootstrap_broker_topic, Kafka),
+	application:load(ekaf),
+    application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
+	application:set_env(ekaf, ekaf_partition_strategy, PartitionStrategy),
+	{ok, _} = application:ensure_all_started(ekaf),
 	
-    %% Set partition strategy, like application:set_env(ekaf, ekaf_partition_strategy, strict_round_robin),
-    application:set_env(ekaf, ekaf_partition_strategy, PartitionStrategy),
-    %% Set broker url and port, like application:set_env(ekaf, ekaf_bootstrap_broker, {"127.0.0.1", 9092}),
-    application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
-    %% Set topic
-    application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapBrokerTopic),
-
-    {ok, _} = application:ensure_all_started(kafkamocker),
-    {ok, _} = application:ensure_all_started(gproc),
-    {ok, _} = application:ensure_all_started(ranch),
-    {ok, _} = application:ensure_all_started(ekaf),
+	%% sync
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"test kafka send message 0001 by jack.teng">>).
 
     io:format("Init ekaf with ~p~n", [BootstrapBroker]).
 	
