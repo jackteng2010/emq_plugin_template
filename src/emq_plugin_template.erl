@@ -80,16 +80,15 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
     {ok, Message};
 
 on_message_publish(Message, _Env) ->
-    io:format("publish ~s~n", [emqttd_message:format(Message)]),
+    io:format("============== publish ~s~n", [emqttd_message:format(Message)]),
 	
-    Json = mochijson2:encode([
-        {type, <<"publish">>},
-        {cluster_node, node()},
-        {ts, emqttd_time:now_secs()}
-    ]),
+	%% sync
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"Kafka Sync 001 By Jack">>),
+	%% async
+	RE = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, <<"Kafka Async 002 By Jack">>),
+	
+	io:format("==============Kafka Result ~s~n", [RE]),
 
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json) ),
-	
     {ok, Message}.
 
 on_message_delivered(ClientId, Username, Message, _Env) ->
