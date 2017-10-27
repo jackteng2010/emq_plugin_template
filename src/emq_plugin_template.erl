@@ -98,14 +98,16 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 ekaf_init(_Env) ->
+	io:format(">>>>> 01"),
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka, undefined),
+	io:format(">>>>> 02"),
 	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue, undefined),
+	io:format(">>>>> 03"),
 	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue, undefined),
-
-	io:format(">>>>>Init ekaf KafkaValue ~p~n", [KafkaValue]),
+	io:format(">>>>> 04"),
 	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
 	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
-
+	io:format(">>>>> 05"),
 	application:load(ekaf),
 	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
     application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
