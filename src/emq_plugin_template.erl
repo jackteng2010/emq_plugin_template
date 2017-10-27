@@ -100,7 +100,7 @@ ekaf_init(_Env) ->
 	{ok, _} = application:ensure_all_started(ekaf),
 	
 	%% sync
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"test kafka send message 0001 by jack.teng">>).
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"test kafka send message 0001 by jack.teng">>),
 
     io:format("Init ekaf with ~p~n", [BootstrapBroker]).
 	
