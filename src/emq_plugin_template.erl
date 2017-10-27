@@ -95,9 +95,8 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 ekaf_init(_Env) ->
-	application:load(ekaf),
     application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
-	application:set_env(ekaf, ekaf_partition_strategy, PartitionStrategy),
+	application:set_env(ekaf, ekaf_partition_strategy, "strict_round_robin"),
 	{ok, _} = application:ensure_all_started(ekaf),
 	
 	%% sync
