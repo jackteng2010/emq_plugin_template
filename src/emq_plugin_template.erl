@@ -33,8 +33,6 @@
 %% -export([on_message_delivered/4, on_message_acked/4]).
 -export([on_message_publish/2]).
 
--define(GlobalTopic, undefined).
-
 %% Called when the plugin application start
 load(Env) ->
 	ekaf_init([Env]),
@@ -71,13 +69,16 @@ ekaf_init(_Env) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	Broker = proplists:get_value(bootstrap_broker, KafkaValue),
 	Topic = proplists:get_value(bootstrap_topic, KafkaValue),
-	?GlobalTopic = Topic, 
 	application:load(ekaf),
 	application:set_env(ekaf, ekaf_bootstrap_broker, Broker),
 	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
 	{ok, _} = application:ensure_all_started(ekaf),
     io:format("Init kafka with Broker: ~p Topic:~p ~n", [Broker, Topic]).
 
+get_gobal_topic() ->
+	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
+	Topic = proplists:get_value(bootstrap_topic, KafkaValue),
+	{ok, Topic}.
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
@@ -87,7 +88,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) 
         {cluster_node, node()},
         {ts, emqttd_time:now_to_secs()}
     ]),
-	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)),
+	ekaf:produce_async(get_gobal_topic(), list_to_binary(Json)),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
@@ -99,7 +100,7 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _En
         {cluster_node, node()},
         {ts, emqttd_time:now_to_secs()}
     ]),
-	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)),
+	ekaf:produce_async(get_gobal_topic(), list_to_binary(Json)),
     ok.
 
 %% on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
@@ -119,7 +120,7 @@ on_session_created(ClientId, Username, _Env) ->
         {cluster_node, node()},
         {ts, emqttd_time:now_to_secs()}
     ]),
-	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)).
+	ekaf:produce_async(get_gobal_topic(), list_to_binary(Json)).
 
 %% on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
 %%     io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
@@ -138,7 +139,7 @@ on_session_terminated(ClientId, Username, Reason, _Env) ->
         {cluster_node, node()},
         {ts, emqttd_time:now_to_secs()}
     ]),
-	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)).
+	ekaf:produce_async(get_gobal_topic(), list_to_binary(Json)).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
@@ -158,7 +159,7 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username}, qos = Qo
         {cluster_node, node()},
         {ts, emqttd_time:now_to_secs()}
     ]),
-	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)),
+	ekaf:produce_async(get_gobal_topic(), list_to_binary(Json)),
     {ok, Message}.
 
 %% on_message_delivered(ClientId, Username, Message, _Env) ->
@@ -175,7 +176,7 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username}, qos = Qo
 %% Internal function : async send message to kafka
 %%--------------------------------------------------------------------
 %% produce_async_kafka(Data) ->
-%% 	Re = ekaf:produce_async(?GlobalTopic, Data),
+%% 	Re = ekaf:produce_async(get_gobal_topic(), Data),
 %% 	io:format("==============Kafka Response ~s~n", [Re]).
 
 
