@@ -46,11 +46,11 @@ load(Env) ->
     emqttd:hook('message.acked', fun ?MODULE:on_message_acked/4, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("My123456 client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+    io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("My123456 client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+    io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
     ok.
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
@@ -80,10 +80,13 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
     {ok, Message};
 
 on_message_publish(Message, _Env) ->
-    io:format("publish ~s~n", [emqttd_message:format(Message)]),
+    io:format("============== publish ~s~n", [emqttd_message:format(Message)]),
 	
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(<<"test push">>)),
+	%% async
+	RE = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, <<"Kafka Async 002 By Jack">>),
 	
+	io:format("==============Kafka Result ~s~n", [RE]),
+
     {ok, Message}.
 
 on_message_delivered(ClientId, Username, Message, _Env) ->
@@ -95,14 +98,19 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 ekaf_init(_Env) ->
+	{ok, KafkaValue} = application:get_env(?APP, kafka, undefined),
+	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue, undefined),
+	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue, undefined),
+
+	io:format(">>>>>Init ekaf KafkaValue ~p~n", [KafkaValue]),
+	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
+	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
+
 	application:load(ekaf),
 	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
     application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
 	{ok, _} = application:ensure_all_started(ekaf),
 	
-	%% sync
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(<<"test kafka send message 0001 by jack.teng">>) ),
-
     io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
 	
 %% Called when the plugin application stop
