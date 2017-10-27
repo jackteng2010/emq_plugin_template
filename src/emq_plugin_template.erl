@@ -47,10 +47,34 @@ load(Env) ->
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+    Json = mochijson2:encode([
+        {type, <<"connected">>},
+        {client_id, ClientId},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+%%  {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+%% 	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+%% 	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	Response = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]),
+	
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+    Json = mochijson2:encode([
+        {type, <<"disconnected">>},
+        {client_id, ClientId},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+%%  {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+%% 	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+%% 	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	Response = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]),
+
     ok.
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
@@ -62,7 +86,19 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
     {ok, TopicTable}.
 
 on_session_created(ClientId, Username, _Env) ->
-    io:format("session(~s/~s) created.", [ClientId, Username]).
+    io:format("session(~s/~s) created.", [ClientId, Username]),
+    Json = mochijson2:encode([
+        {type, <<"session_created">>},
+        {client_id, ClientId},
+		{username, Username},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+%%  {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+%% 	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+%% 	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	Response = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]).
 
 on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
@@ -73,19 +109,48 @@ on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     ok.
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]).
+    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
+    Json = mochijson2:encode([
+        {type, <<"session_terminated">>},
+        {client_id, ClientId},
+		{username, Username},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+%%  {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+%% 	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+%% 	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	Response = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+	
+	io:format("==============kafka response ~s~n", [Response]).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
     {ok, Message};
 
-on_message_publish(Message, _Env) ->
+on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
+                        qos     = Qos,
+                        topic   = Topic,
+                        payload = Payload
+					}, _Env) ->
     io:format("============== publish ~s~n", [emqttd_message:format(Message)]),
 	
-	%% async
-	RE = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, <<"Kafka Async 002 By Jack">>),
-	
-	io:format("==============Kafka Result ~s~n", [RE]),
+    Json = mochijson2:encode([
+        {type, <<"publish">>},
+        {client_id, ClientId},
+		{username, Username},
+		{qos, Qos},
+		{topic, Topic},
+		{payload, Payload},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+%%  {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+%% 	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+%% 	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+
+	Response = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]),
 
     {ok, Message}.
 
@@ -97,22 +162,22 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
     {ok, Message}.
 
+%% init kafka config
 ekaf_init(_Env) ->
-	{ok, KafkaValue} = application:get_env(?APP, kafka, undefined),
-	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue, undefined),
-	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue, undefined),
-
-	io:format(">>>>>Init ekaf KafkaValue ~p~n", [KafkaValue]),
-	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
-	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
-
 	application:load(ekaf),
-	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
-    application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
+%%     {ok, Kafka} = application:get_env(emqttd_plugin_template, kafka),
+%% 	BootstrapBroker = proplists:get_value(bootstrap_broker, Kafka),
+%% 	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+%% 	application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
+%% 	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
+
+	application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
+ 	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
+
 	{ok, _} = application:ensure_all_started(ekaf),
-	
-    io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
-	
+	io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
+
+
 %% Called when the plugin application stop
 unload() ->
     emqttd:unhook('client.connected', fun ?MODULE:on_client_connected/3),
