@@ -26,6 +26,15 @@ start(_StartType, _StartArgs) ->
     ok = emqttd_access_control:register_mod(auth, emq_auth_demo, []),
     ok = emqttd_access_control:register_mod(acl, emq_acl_demo, []),
     emq_plugin_template:load(application:get_all_env()),
+	
+	{ok, KafkaValue} = application:get_env(?APP, kafka, undefined),
+	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue, undefined),
+	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue, undefined),
+
+	io:format(">>>>>Init ekaf KafkaValue ~p~n", [KafkaValue]),
+	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
+	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
+	
     {ok, Sup}.
 
 stop(_State) ->
