@@ -82,7 +82,7 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
 on_message_publish(Message, _Env) ->
     io:format("publish ~s~n", [emqttd_message:format(Message)]),
 	
-	ekaf:produce_async_batched(<<"tech-iot-device-gateway-2040">>, list_to_binary(<<" my name is jack.">>)),
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(<<"test push">>)),
 	
     {ok, Message}.
 
@@ -101,7 +101,7 @@ ekaf_init(_Env) ->
 	{ok, _} = application:ensure_all_started(ekaf),
 	
 	%% sync
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"test kafka send message 0001 by jack.teng">>),
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(<<"test kafka send message 0001 by jack.teng">>) ),
 
     io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
 	
