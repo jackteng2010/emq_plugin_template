@@ -102,7 +102,7 @@ ekaf_init(_Env) ->
 	%% sync
 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"test kafka send message 0001 by jack.teng">>),
 
-    io:format("Init ekaf with ~p~n", [BootstrapBroker]).
+    io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
 	
 %% Called when the plugin application stop
 unload() ->
