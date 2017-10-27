@@ -175,7 +175,7 @@ ekaf_init(_Env) ->
  	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
 
 	{ok, _} = application:ensure_all_started(ekaf),
-	io:format("Init ekaf with ~p~n", [BootstrapBroker]).
+	io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
 
 
 %% Called when the plugin application stop
