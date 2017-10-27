@@ -99,11 +99,11 @@ on_message_acked(ClientId, Username, Message, _Env) ->
 
 ekaf_init(_Env) ->
 	io:format(">>>>> 01"),
-	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka, undefined),
+	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	io:format(">>>>> 02"),
-	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue, undefined),
+	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue),
 	io:format(">>>>> 03"),
-	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue, undefined),
+	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue),
 	io:format(">>>>> 04"),
 	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
 	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
