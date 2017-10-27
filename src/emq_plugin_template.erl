@@ -46,11 +46,27 @@ load(Env) ->
     emqttd:hook('message.acked', fun ?MODULE:on_message_acked/4, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("My123456 client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+    io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+    Json = mochijson2:encode([
+        {type, <<"connected">>},
+        {client_id, ClientId},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+    produce_to_kafka(Json),
+	
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
-    io:format("My123456 client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+    io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+    Json = mochijson2:encode([
+        {type, <<"disconnected">>},
+        {client_id, ClientId},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+    produce_to_kafka(Json),
+
     ok.
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
@@ -62,7 +78,15 @@ on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
     {ok, TopicTable}.
 
 on_session_created(ClientId, Username, _Env) ->
-    io:format("session(~s/~s) created.", [ClientId, Username]).
+    io:format("session(~s/~s) created.", [ClientId, Username]),
+    Json = mochijson2:encode([
+        {type, <<"session_created">>},
+        {client_id, ClientId},
+		{username, Username},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+    produce_to_kafka(Json).
 
 on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
@@ -73,21 +97,40 @@ on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     ok.
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]).
+    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
+    Json = mochijson2:encode([
+        {type, <<"session_terminated">>},
+        {client_id, ClientId},
+		{username, Username},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+    produce_to_kafka(Json).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
     {ok, Message};
 
-on_message_publish(Message, _Env) ->
+on_message_publish(Message = #mqtt_message{pktid = PkgId, from = {ClientId, Username},
+                        qos     = Qos,
+                        retain  = Retain,
+                        dup     = Dup,
+                        topic   = Topic,
+                        payload = Payload
+					}, _Env) ->
     io:format("============== publish ~s~n", [emqttd_message:format(Message)]),
 	
-	%% sync
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"Kafka Sync 001 By Jack">>),
-	%% async
-	RE = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, <<"Kafka Async 002 By Jack">>),
-	
-	io:format("==============Kafka Result ~s~n", [RE]),
+    Json = mochijson2:encode([
+        {type, <<"publish">>},
+        {client_id, ClientId},
+		{username, Username},
+		{qos, Qos},
+		{topic, Topic},
+		{payload, Payload},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_secs()}
+    ]),
+    produce_to_kafka(Json),
 
     {ok, Message}.
 
@@ -99,14 +142,28 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
     {ok, Message}.
 
+%% init kafka config
 ekaf_init(_Env) ->
 	application:load(ekaf),
-	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
-    application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
+	
+	{ok, BrokerConfig} = application:get_env(?APP, server),
+	{ok, Topic} = application:get_env(?APP, topic),
+    BrokerHost = proplists:get_value(host, BrokerConfig), 
+    BrokerPort = proplists:get_value(port, BrokerConfig),
+	
+	application:set_env(ekaf, ekaf_bootstrap_broker, {BrokerHost, BrokerPort}),
+	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
+	
 	{ok, _} = application:ensure_all_started(ekaf),
-	
-    io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
-	
+	io:format("Init ekaf with ip ~s:~p, topic: ~s~n", [BrokerHost, BrokerPort, Topic]).
+
+%% send message to kafka async
+produce_to_kafka(Data) ->
+	{ok, Topic} = application:get_env(?APP, topic),
+	Response = ekaf:produce_async(Topic, list_to_binary(Data)),
+	io:format("==============kafka response ~s~n", [Response]).
+
+
 %% Called when the plugin application stop
 unload() ->
     emqttd:unhook('client.connected', fun ?MODULE:on_client_connected/3),
