@@ -32,6 +32,7 @@
 
 %% Called when the plugin application start
 load(Env) ->
+	ekaf_init([Env]),
     emqttd:hook('client.connected', fun ?MODULE:on_client_connected/3, [Env]),
     emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3, [Env]),
     emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
@@ -46,10 +47,29 @@ load(Env) ->
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("My123 client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+	
+    Json = mochijson2:encode([
+        {type, <<"connected">>},
+        {client_id, ClientId},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+    ekaf:produce_async_batched(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+	
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("My123 client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+	
+	    Json = mochijson2:encode([
+        {type, <<"disconnected">>},
+        {client_id, ClientId},
+        {reason, Reason},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+    ekaf:produce_async_batched(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+
     ok.
 
 on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
@@ -80,6 +100,10 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
 
 on_message_publish(Message, _Env) ->
     io:format("My123 publish ~s~n", [emqttd_message:format(Message)]),
+	
+	Json = mochijson2:encode(Message),
+    ekaf:produce_async_batched(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
+
     {ok, Message}.
 
 on_message_delivered(ClientId, Username, Message, _Env) ->
@@ -104,3 +128,27 @@ unload() ->
     emqttd:unhook('message.delivered', fun ?MODULE:on_message_delivered/4),
     emqttd:unhook('message.acked', fun ?MODULE:on_message_acked/4).
 
+%% ===================================================================
+%% ekaf_init
+%% ===================================================================
+
+ekaf_init(_Env) ->
+    %% Get parameters
+    {ok, Kafka} = application:get_env(emq_plugin_template, kafka),
+    BootstrapBroker = proplists:get_value(bootstrap_broker, Kafka),
+    PartitionStrategy= proplists:get_value(partition_strategy, Kafka),
+	BootstrapBrokerTopic = proplists:get_value(bootstrap_broker_topic, Kafka),
+	
+    %% Set partition strategy, like application:set_env(ekaf, ekaf_partition_strategy, strict_round_robin),
+    application:set_env(ekaf, ekaf_partition_strategy, PartitionStrategy),
+    %% Set broker url and port, like application:set_env(ekaf, ekaf_bootstrap_broker, {"127.0.0.1", 9092}),
+    application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
+    %% Set topic
+    application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapBrokerTopic),
+
+    {ok, _} = application:ensure_all_started(kafkamocker),
+    {ok, _} = application:ensure_all_started(gproc),
+    {ok, _} = application:ensure_all_started(ranch),
+    {ok, _} = application:ensure_all_started(ekaf),
+
+    io:format("Init ekaf with ~p~n", [BootstrapBroker]).
