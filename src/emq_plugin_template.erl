@@ -54,7 +54,10 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) 
         {cluster_node, node()},
         {ts, emqttd_time:now_secs()}
     ]),
-    produce_to_kafka(Json),
+    {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]),
 	
     {ok, Client}.
 
@@ -66,7 +69,10 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _En
         {cluster_node, node()},
         {ts, emqttd_time:now_secs()}
     ]),
-    produce_to_kafka(Json),
+    {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]),
 
     ok.
 
@@ -87,7 +93,10 @@ on_session_created(ClientId, Username, _Env) ->
         {cluster_node, node()},
         {ts, emqttd_time:now_secs()}
     ]),
-    produce_to_kafka(Json).
+    {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]).
 
 on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
     io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
@@ -106,7 +115,10 @@ on_session_terminated(ClientId, Username, Reason, _Env) ->
         {cluster_node, node()},
         {ts, emqttd_time:now_secs()}
     ]),
-    produce_to_kafka(Json).
+    {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
@@ -129,7 +141,10 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
         {cluster_node, node()},
         {ts, emqttd_time:now_secs()}
     ]),
-    produce_to_kafka(Json),
+    {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
+	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
+	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	io:format("==============kafka response ~s~n", [Response]),
 
     {ok, Message}.
 
@@ -151,13 +166,6 @@ ekaf_init(_Env) ->
 	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
 	{ok, _} = application:ensure_all_started(ekaf),
 	io:format("Init ekaf with ~p~n", [BootstrapBroker]).
-
-%% send message to kafka async
-produce_to_kafka(Data) ->
-    {ok, Kafka} = application:get_env(emqttd_plugin_kafka_bridge, kafka),
-	BootstrapTopic = proplists:get_value(bootstrap_topic, Kafka),
-	Response = ekaf:produce_async(BootstrapTopic, list_to_binary(Data)),
-	io:format("==============kafka response ~s~n", [Response]).
 
 
 %% Called when the plugin application stop
