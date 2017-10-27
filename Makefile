@@ -2,10 +2,9 @@ PROJECT = emq_plugin_template
 PROJECT_DESCRIPTION = EMQ Plugin Template
 PROJECT_VERSION = 2.3
 
-BUILD_DEPS = emqttd cuttlefish ekaf
+BUILD_DEPS = emqttd cuttlefish
 dep_emqttd = git https://github.com/emqtt/emqttd master
 dep_cuttlefish = git https://github.com/emqtt/cuttlefish
-dep_ekaf = git https://github.com/helpshift/ekaf master
 
 ERLC_OPTS += +debug_info
 ERLC_OPTS += +'{parse_transform, lager_transform}'
