@@ -24,108 +24,159 @@
 
 -export([on_client_connected/3, on_client_disconnected/3]).
 
--export([on_client_subscribe/4, on_client_unsubscribe/4]).
+%% -export([on_client_subscribe/4, on_client_unsubscribe/4]).
 
--export([on_session_created/3, on_session_subscribed/4, on_session_unsubscribed/4, on_session_terminated/4]).
+-export([on_session_created/3, on_session_terminated/4]).
 
--export([on_message_publish/2, on_message_delivered/4, on_message_acked/4]).
+%% -export([on_session_subscribed/4, on_session_unsubscribed/4]).
+
+%% -export([on_message_delivered/4, on_message_acked/4]).
+-export([on_message_publish/2]).
+
+-define(GlobalTopic, undefined).
 
 %% Called when the plugin application start
 load(Env) ->
 	ekaf_init([Env]),
     emqttd:hook('client.connected', fun ?MODULE:on_client_connected/3, [Env]),
     emqttd:hook('client.disconnected', fun ?MODULE:on_client_disconnected/3, [Env]),
-    emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
-    emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
+%%  emqttd:hook('client.subscribe', fun ?MODULE:on_client_subscribe/4, [Env]),
+%%  emqttd:hook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4, [Env]),
     emqttd:hook('session.created', fun ?MODULE:on_session_created/3, [Env]),
-    emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]),
-    emqttd:hook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4, [Env]),
     emqttd:hook('session.terminated', fun ?MODULE:on_session_terminated/4, [Env]),
-    emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]),
-    emqttd:hook('message.delivered', fun ?MODULE:on_message_delivered/4, [Env]),
-    emqttd:hook('message.acked', fun ?MODULE:on_message_acked/4, [Env]).
+%%  emqttd:hook('session.subscribed', fun ?MODULE:on_session_subscribed/4, [Env]),
+%%  emqttd:hook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4, [Env]),
+%%  emqttd:hook('message.delivered', fun ?MODULE:on_message_delivered/4, [Env]),
+%%  emqttd:hook('message.acked', fun ?MODULE:on_message_acked/4, [Env]),
+	emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
+
+%% Called when the plugin application stop
+unload() ->
+    emqttd:unhook('client.connected', fun ?MODULE:on_client_connected/3),
+    emqttd:unhook('client.disconnected', fun ?MODULE:on_client_disconnected/3),
+%%  emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
+%%  emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4),
+	emqttd:unhook('session.created', fun ?MODULE:on_session_created/3),
+	emqttd:unhook('session.terminated', fun ?MODULE:on_session_terminated/4),
+%%  emqttd:unhook('session.subscribed', fun ?MODULE:on_session_subscribed/4),
+%%  emqttd:unhook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4),
+%% 	emqttd:unhook('message.delivered', fun ?MODULE:on_message_delivered/4),
+%%  emqttd:unhook('message.acked', fun ?MODULE:on_message_acked/4),
+	emqttd:unhook('message.publish', fun ?MODULE:on_message_publish/2).
+
+%%--------------------------------------------------------------------
+%% Init Kafka function
+%%--------------------------------------------------------------------
+ekaf_init(_Env) ->
+	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
+	Broker = proplists:get_value(bootstrap_broker, KafkaValue),
+	Topic = proplists:get_value(bootstrap_topic, KafkaValue),
+	?GlobalTopic = Topic, 
+	application:load(ekaf),
+	application:set_env(ekaf, ekaf_bootstrap_broker, Broker),
+	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
+	{ok, _} = application:ensure_all_started(ekaf),
+    io:format("Init kafka with Broker: ~p Topic:~p ~n", [Broker, Topic]).
+
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
+	Json = mochijson2:encode([
+        {type, <<"connected">>},
+        {client_id, ClientId},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+	Json = mochijson2:encode([
+        {type, <<"disconnected">>},
+        {client_id, ClientId},
+		{reason, Reason},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)),
     ok.
 
-on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
-    io:format("client(~s/~s) will subscribe: ~p~n", [Username, ClientId, TopicTable]),
-    {ok, TopicTable}.
-    
-on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
-    io:format("client(~s/~s) unsubscribe ~p~n", [ClientId, Username, TopicTable]),
-    {ok, TopicTable}.
+%% on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
+%%     io:format("client(~s/~s) will subscribe: ~p~n", [Username, ClientId, TopicTable]),
+%%     {ok, TopicTable}.
+%%     
+%% on_client_unsubscribe(ClientId, Username, TopicTable, _Env) ->
+%%     io:format("client(~s/~s) unsubscribe ~p~n", [ClientId, Username, TopicTable]),
+%%     {ok, TopicTable}.
 
 on_session_created(ClientId, Username, _Env) ->
-    io:format("session(~s/~s) created.", [ClientId, Username]).
+    io:format("session(~s/~s) created.", [ClientId, Username]),
+	Json = mochijson2:encode([
+        {type, <<"session_created">>},
+        {client_id, ClientId},
+		{username, Username},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)).
 
-on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
-    io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
-    {ok, {Topic, Opts}}.
-
-on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
-    io:format("session(~s/~s) unsubscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
-    ok.
+%% on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
+%%     io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
+%%     {ok, {Topic, Opts}}.
+%% 
+%% on_session_unsubscribed(ClientId, Username, {Topic, Opts}, _Env) ->
+%%     io:format("session(~s/~s) unsubscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
+%%     ok.
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]).
+    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
+	Json = mochijson2:encode([
+        {type, <<"session_terminated">>},
+        {client_id, ClientId},
+		{username, Username},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
     {ok, Message};
 
-on_message_publish(Message, _Env) ->
-    io:format("============== publish ~s~n", [emqttd_message:format(Message)]),
-	
-	%% async
-	RE = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, <<"Kafka Async 002 By Jack">>),
-	
-	io:format("==============Kafka Result ~s~n", [RE]),
-
+on_message_publish(Message = #mqtt_message{from = {ClientId, Username}, qos = Qos, topic = Topic, payload = Payload},
+				    _Env) ->
+    io:format("publish ~s~n", [emqttd_message:format(Message)]),
+	Json = mochijson2:encode([
+        {type, <<"publish">>},
+        {client_id, ClientId},
+		{username, Username},
+		{username, Username},
+		{topic, Topic},
+		{payload, Payload},
+		{qos, Qos},
+        {cluster_node, node()},
+        {ts, emqttd_time:now_to_secs()}
+    ]),
+	ekaf:produce_async(?GlobalTopic, list_to_binary(Json)),
     {ok, Message}.
 
-on_message_delivered(ClientId, Username, Message, _Env) ->
-    io:format("delivered to client(~s/~s): ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
-    {ok, Message}.
+%% on_message_delivered(ClientId, Username, Message, _Env) ->
+%%     io:format("delivered to client(~s/~s): ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
+%%     {ok, Message}.
+%% 
+%% on_message_acked(ClientId, Username, Message, _Env) ->
+%%     io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
+%%     {ok, Message}.
 
-on_message_acked(ClientId, Username, Message, _Env) ->
-    io:format("client(~s/~s) acked: ~s~n", [Username, ClientId, emqttd_message:format(Message)]),
-    {ok, Message}.
 
-ekaf_init(_Env) ->
-	io:format(">>>>> 01"),
-	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
-	io:format(">>>>> 02"),
-	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue),
-	io:format(">>>>> 03"),
-	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue),
-	io:format(">>>>> 04"),
-	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
-	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
-	io:format(">>>>> 05"),
-	application:load(ekaf),
-	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
-    application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
-	{ok, _} = application:ensure_all_started(ekaf),
-	
-    io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
-	
-%% Called when the plugin application stop
-unload() ->
-    emqttd:unhook('client.connected', fun ?MODULE:on_client_connected/3),
-    emqttd:unhook('client.disconnected', fun ?MODULE:on_client_disconnected/3),
-    emqttd:unhook('client.subscribe', fun ?MODULE:on_client_subscribe/4),
-    emqttd:unhook('client.unsubscribe', fun ?MODULE:on_client_unsubscribe/4),
-    emqttd:unhook('session.created', fun ?MODULE:on_session_created/3),
-    emqttd:unhook('session.subscribed', fun ?MODULE:on_session_subscribed/4),
-    emqttd:unhook('session.unsubscribed', fun ?MODULE:on_session_unsubscribed/4),
-    emqttd:unhook('session.terminated', fun ?MODULE:on_session_terminated/4),
-    emqttd:unhook('message.publish', fun ?MODULE:on_message_publish/2),
-    emqttd:unhook('message.delivered', fun ?MODULE:on_message_delivered/4),
-    emqttd:unhook('message.acked', fun ?MODULE:on_message_acked/4).
+
+%%--------------------------------------------------------------------
+%% Internal function : async send message to kafka
+%%--------------------------------------------------------------------
+%% produce_async_kafka(Data) ->
+%% 	Re = ekaf:produce_async(?GlobalTopic, Data),
+%% 	io:format("==============Kafka Response ~s~n", [Re]).
+
+
 
