@@ -116,10 +116,10 @@ produce_to_kafka(Json) ->
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
 	
 	lager:info("produce to kafka json ~p", [Json]),
-    try ekaf:produce_sync(BootstrapTopic, <<"foo 123">>)
-    catch
-        error:exists -> lager:error("produce_sync error")
-    end.
+%%     try ekaf:produce_sync(BootstrapTopic, <<"foo 123">>)
+%%     catch
+%%         error:exists -> lager:error("produce_sync error")
+%%     end.
 	
 %% 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"foo 123">>),
 	
@@ -130,3 +130,7 @@ produce_to_kafka(Json) ->
 %% 	Re = ekaf:produce_async(<<BootstrapTopic>>, list_to_binary(Json)),
 	
 %% 	lager:info("Kafka response ~s~n", [Re]).
+	lager:info("Kafka response").
+
+
+
