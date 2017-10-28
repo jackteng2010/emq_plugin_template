@@ -38,7 +38,7 @@ load(Env) ->
     emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, username = Username}, Env) ->
-	io:format("client ~s/~s connected, connack: ~w~n", [ClientId, Username, ConnAck]),
+	lager:info("client ~s/~s connected, connack: ~w", [ClientId, Username, ConnAck]),
     Json = mochijson2:encode([{type, <<"connected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -47,7 +47,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, userna
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
-    io:format("client  ~s/~s disconnected, reason: ~w~n", [ClientId, Username, Reason]),
+    lager:info("client  ~s/~s disconnected, reason: ~w", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"disconnected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -57,7 +57,7 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, user
     ok.
 
 on_session_created(ClientId, Username, _Env) ->
-	io:format("session(~s/~s) created.", [ClientId, Username]),
+	lager:info("session(~s/~s) created.", [ClientId, Username]),
     Json = mochijson2:encode([{type, <<"session_created">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -65,7 +65,7 @@ on_session_created(ClientId, Username, _Env) ->
 	produce_to_kafka(Json).
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-	io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
+	lager:info("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"session_terminated">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -73,18 +73,13 @@ on_session_terminated(ClientId, Username, Reason, _Env) ->
 								{ts, emqttd_time:now_secs()}]),
 	produce_to_kafka(Json).
 
-%% transform message and return
-on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
-	io:format("publish sys>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"),
-    {ok, Message};
-
 on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
                         qos     = Qos,
                         retain  = Retain,
                         dup     = Dup,
                         topic   = Topic,
                         payload = Payload}, _Env) ->
-    io:format("publish >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"),
+    lager:info("publish >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"),
     Json = mochijson2:encode([{type, <<"publish">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -105,7 +100,7 @@ ekaf_init(_Env) ->
 	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
     application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init ekaf with ~p ~p ~n", [BootstrapBroker, BootstrapTopic]).
+    lager:info("Init ekaf with ~p ~p", [BootstrapBroker, BootstrapTopic]).
 	
 %% Called when the plugin application stop
 unload() ->
@@ -120,14 +115,18 @@ produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
 	
-	io:format("produce to kafka 111 ~p ~n", [BootstrapTopic]),
+	lager:info("produce to kafka json ~p", [Json]),
+    try ekaf:produce_sync(BootstrapTopic, <<"foo 123">>)
+    catch
+        error:exists -> lager:error("produce_sync error")
+    end.
+	
 %% 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"foo 123">>),
 	
-%% 	io:format("produce to kafka 222 ~p ~n", [BootstrapTopic]),
+%% 	lager:info("produce to kafka 222 ~p ~n", [BootstrapTopic]),
 %% 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
 	
-%% 	io:format("produce to kafka 333 ~p ~n", [BootstrapTopic]),
+%% 	lager:info("produce to kafka 333 ~p ~n", [BootstrapTopic]),
 %% 	Re = ekaf:produce_async(<<BootstrapTopic>>, list_to_binary(Json)),
 	
-%% 	io:format("Kafka response ~s~n", [Re]).
-	io:format("Kafka response over").
+%% 	lager:info("Kafka response ~s~n", [Re]).
