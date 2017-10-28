@@ -24,7 +24,6 @@
 start(_StartType, _StartArgs) ->
     {ok, Sup} = emq_plugin_template_sup:start_link(),
     emq_plugin_template:load(application:get_all_env()),
-	
     {ok, Sup}.
 
 stop(_State) ->
