@@ -98,22 +98,14 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 ekaf_init(_Env) ->
-	io:format(">>>>> 01"),
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
-	io:format(">>>>> 02"),
 	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue),
-	io:format(">>>>> 03"),
-	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue),
-	io:format(">>>>> 04"),
-	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
-	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
-	io:format(">>>>> 05"),
+	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
 	application:load(ekaf),
-	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
-    application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
+	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
+    application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
 	{ok, _} = application:ensure_all_started(ekaf),
-	
-    io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
+    io:format("Init ekaf with ~p ~p ~n", [BootstrapBroker, BootstrapTopic]).
 	
 %% Called when the plugin application stop
 unload() ->
