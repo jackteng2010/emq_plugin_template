@@ -75,6 +75,9 @@ on_session_terminated(ClientId, Username, Reason, _Env) ->
 								{ts, emqttd_time:now_secs()}]),
 	produce_to_kafka(Json).
     
+%% transform message and return
+on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
+    {ok, Message};
 
 on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
                         qos     = Qos,
