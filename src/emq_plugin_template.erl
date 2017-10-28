@@ -37,17 +37,19 @@ load(Env) ->
     emqttd:hook('session.terminated', fun ?MODULE:on_session_terminated/4, [Env]),
     emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
 
-on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId,
-                                                   username   = Username}, Env) ->
+on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, username = Username}, Env) ->
+	io:format("client ~s/~s connected ~n", [ClientId, Username]),
     Json = mochijson2:encode([{type, <<"connected">>},
 								{clientid, ClientId},
 								{username, Username},
 								{ts, emqttd_time:now_secs()}]),
+	io:format(">>>>>>client 01"),
 	produce_to_kafka(Json),
+	io:format(">>>>>>client 02"),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
-    io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
+    io:format("client  ~s/~s disconnected, reason: ~w~n", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"disconnected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -115,9 +117,14 @@ unload() ->
     emqttd:unhook('message.publish', fun ?MODULE:on_message_publish/2).
 
 %% Internal function, send message to kafka
-produce_to_kafka(Data) ->
+produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
-	Re = ekaf:produce_async(BootstrapTopic, list_to_binary(Data)),
-	io:format("==============Kafka response ~s~n", [Re]).
+	io:format("produce to kafka 111~p ~n", [BootstrapTopic]),
+	%% sync
+	ekaf:produce_sync(BootstrapTopic, <<"foo 123">>),
+	io:format("produce to kafka 222~p ~n", [BootstrapTopic]),
+
+	Re = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	io:format("Kafka response ~s~n", [Re]).
 
