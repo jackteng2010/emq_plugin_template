@@ -38,7 +38,7 @@ load(Env) ->
     emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, username = Username}, Env) ->
-	lager:info("client(~s/~s) connected, connack: ~w.", [ClientId, Username, ConnAck]),
+	lager:info("client(~p/~p) connected, connack: ~w.", [ClientId, Username, ConnAck]),
     Json = mochijson2:encode([{type, <<"connected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -47,7 +47,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, userna
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
-    lager:info("client(~s/~s) disconnected, reason: ~w.", [ClientId, Username, Reason]),
+    lager:info("client(~p/~p) disconnected, reason: ~w.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"disconnected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -57,7 +57,8 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, user
     ok.
 
 on_session_created(ClientId, Username, _Env) ->
-	lager:info("client(~s/~s) created session.", [ClientId, Username]),
+	lager:info("11 client(~p/~p) created session.", [ClientId, Username]),
+	lager:error("22 client(~p/~p) created session.", [ClientId, Username]),
     Json = mochijson2:encode([{type, <<"session_created">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -65,7 +66,7 @@ on_session_created(ClientId, Username, _Env) ->
 	produce_to_kafka(Json).
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-	lager:info("client(~s/~s) terminated session, reason: ~w.", [ClientId, Username, Reason]),
+	lager:info("client(~p/~p) terminated session, reason: ~w.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"session_terminated">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -83,7 +84,7 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
                         dup     = Dup,
                         topic   = Topic,
                         payload = Payload}, _Env) ->
-    lager:info("client(~s/~s) publish message to topic:~s.", [ClientId, Username, Topic]),
+    lager:info("client(~p/~p) publish message to topic: ~p.", [ClientId, Username, Topic]),
     Json = mochijson2:encode([{type, <<"publish">>},
 								{clientid, ClientId},
 								{username, Username},

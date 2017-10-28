@@ -25,7 +25,6 @@ init(Opts) ->
     {ok, Opts}.
 
 check_acl({Client, PubSub, Topic}, _Opts) ->
-    io:format("ACL Demo: ~p ~p ~p~n", [Client, PubSub, Topic]),
     allow.
 
 reload_acl(_Opts) ->
