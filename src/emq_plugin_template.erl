@@ -126,12 +126,6 @@ produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	Topic = proplists:get_value(topic, KafkaValue),
 
-    try ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)) of 
-		_ -> io:format("111 send to kafka success. ~n")
-    catch _:Error ->
-        lager:error("111 can't send to kafka error: ~s", [Error])
-    end.
-
 	try ekaf:produce_async(Topic, list_to_binary(Json)) of 
 		_ -> io:format("send to kafka success. ~n")
     catch _:Error ->

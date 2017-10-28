@@ -7,8 +7,8 @@
 ]}.
 
 {mapping, "auth.kafka.port", "emq_plugin_template.kafka", [
-  {default, 9092},
-  {datatype, integer}
+  {default, "9092"},
+  {datatype, string}
 ]}.
 
 {mapping, "auth.kafka.topic", "emq_plugin_template.kafka", [
