@@ -38,7 +38,7 @@ load(Env) ->
     emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, username = Username}, Env) ->
-	lager:debug("client(~s/~s) connected, connack: ~w.", [ClientId, Username, ConnAck]),
+	lager:info("client(~s/~s) connected, connack: ~w.", [ClientId, Username, ConnAck]),
     Json = mochijson2:encode([{type, <<"connected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -47,7 +47,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, userna
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
-    lager:debug("client(~s/~s) disconnected, reason: ~w.", [ClientId, Username, Reason]),
+    lager:info("client(~s/~s) disconnected, reason: ~w.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"disconnected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -57,7 +57,7 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, user
     ok.
 
 on_session_created(ClientId, Username, _Env) ->
-	lager:debug("11 client(~s/~s) created session.", [ClientId, Username]),
+	lager:info("11 client(~s/~s) created session.", [ClientId, Username]),
 	lager:error("22 client(~s/~s) created session.", [ClientId, Username]),
     Json = mochijson2:encode([{type, <<"session_created">>},
 								{clientid, ClientId},
@@ -66,7 +66,7 @@ on_session_created(ClientId, Username, _Env) ->
 	produce_to_kafka(Json).
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-	lager:debug("client(~s/~s) terminated session, reason: ~w.", [ClientId, Username, Reason]),
+	lager:info("client(~s/~s) terminated session, reason: ~w.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"session_terminated">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -84,7 +84,7 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
                         dup     = Dup,
                         topic   = Topic,
                         payload = Payload}, _Env) ->
-    lager:debug("client(~s/~s) publish message to topic: ~s.", [ClientId, Username, Topic]),
+    lager:info("client(~s/~s) publish message to topic: ~s.", [ClientId, Username, Topic]),
     Json = mochijson2:encode([{type, <<"publish">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -105,7 +105,7 @@ ekaf_init(_Env) ->
 	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
     application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
 	{ok, _} = application:ensure_all_started(ekaf),
-    lager:debug("Init ekaf server with ~s ~s", [BootstrapBroker, BootstrapTopic]).
+    lager:info("Init ekaf server with ~s ~s", [BootstrapBroker, BootstrapTopic]).
 	
 %% Called when the plugin application stop
 unload() ->
@@ -120,7 +120,7 @@ produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
     try ekaf:produce_async(BootstrapTopic, list_to_binary(Json)) of 
-		_ -> lager:debug("send to kafka success")
+		_ -> lager:info("send to kafka success")
     catch _:Error ->
-        lager:error("send to kafka error: ~s", [Error])
+        lager:error("can't send to kafka error: ~s", [Error])
     end.
