@@ -111,7 +111,7 @@ ekaf_init(_Env) ->
 	application:set_env(ekaf, ekaf_bootstrap_broker, {Host, list_to_integer(Port)}),
 	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init ekaf server with ~s, topic: ~s~n", [Host, Topic]).
+    io:format("Init ekaf server with ~s:~s, topic: ~s~n", [Host, Port, Topic]).
 	
 %% Called when the plugin application stop
 unload() ->
