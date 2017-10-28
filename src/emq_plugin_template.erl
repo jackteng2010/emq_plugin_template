@@ -104,14 +104,14 @@ ekaf_init(_Env) ->
 	
 	%%host port topic config from schema, the last line
 	Host = proplists:get_value(host, KafkaValue),
-	Port = list_to_integer(proplists:get_value(port, KafkaValue)),
+	Port = proplists:get_value(port, KafkaValue),
 	Topic = proplists:get_value(topic, KafkaValue),
 	
 	application:load(ekaf),
 	application:set_env(ekaf, ekaf_bootstrap_broker, {Host, Port}),
 	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init ekaf server with ~s, topic: ~n", [Host, Topic]).
+    io:format("Init ekaf server with ~s, topic: ~s~n", [Host, Topic]).
 	
 %% Called when the plugin application stop
 unload() ->
