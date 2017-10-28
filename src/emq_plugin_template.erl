@@ -81,6 +81,12 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
 
 on_message_publish(Message, _Env) ->
     io:format("============== publish ~s~n", [emqttd_message:format(Message)]),
+	
+	%% async
+	RE = ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, <<"Kafka Async 002 By Jack">>),
+	
+	io:format("==============Kafka Result ~s~n", [RE]),
+
     {ok, Message}.
 
 on_message_delivered(ClientId, Username, Message, _Env) ->
@@ -92,14 +98,22 @@ on_message_acked(ClientId, Username, Message, _Env) ->
     {ok, Message}.
 
 ekaf_init(_Env) ->
+	io:format(">>>>> 01"),
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
-	Broker = proplists:get_value(bootstrap_broker, KafkaValue),
-	Topic = proplists:get_value(bootstrap_topic, KafkaValue),
+	io:format(">>>>> 02"),
+	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue),
+	io:format(">>>>> 03"),
+	PartitionStrategy = proplists:get_value(partition_strategy, KafkaValue),
+	io:format(">>>>> 04"),
+	io:format(">>>>>Init ekaf BootstrapBroker ~p~n", [BootstrapBroker]),
+	io:format(">>>>>Init ekaf PartitionStrategy ~p~n", [PartitionStrategy]),
+	io:format(">>>>> 05"),
 	application:load(ekaf),
-	application:set_env(ekaf, ekaf_bootstrap_broker, Broker),
-	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
+	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
+    application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init kafka with Broker: ~p Topic:~p ~n", [Broker, Topic]).
+	
+    io:format("Init ekaf with ~p~n", [{"10.253.11.192", 9092}]).
 	
 %% Called when the plugin application stop
 unload() ->
