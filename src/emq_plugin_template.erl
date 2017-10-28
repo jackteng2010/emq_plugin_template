@@ -21,11 +21,8 @@
 -export([load/1, unload/0]).
 
 %% Hooks functions
-
 -export([on_client_connected/3, on_client_disconnected/3]).
-
 -export([on_session_created/3, on_session_terminated/4]).
-
 -export([on_message_publish/2]).
 
 %% Called when the plugin application start
@@ -77,3 +74,4 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
 on_message_publish(Message, _Env) ->
     io:format("publish ~s~n", [emqttd_message:format(Message)]),
     {ok, Message}.
+
