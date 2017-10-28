@@ -102,16 +102,14 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
 ekaf_init(_Env) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	
-	Json = mochijson2:encode([{kafValue, KafkaValue}]),
-	lager:error("----------001 ~s", [Json]),
+	%%host port topic config from schema, the last line
+	Host = proplists:get_value(host, KafkaValue),
+	Port = proplists:get_value(port, KafkaValue),
+	Topic = proplists:get_value(topic, KafkaValue),
 	
-	Host = proplists:get_value(<<"auth.kafka.host">>, KafkaValue),
-	Port = proplists:get_value(<<"auth.kafka.port">>, KafkaValue),
-	Topic = proplists:get_value(<<"auth.kafka.topic">>, KafkaValue),
-	
-lager:error("----------002, ~s", [Host]),
-lager:error("----------003, ~s", [Port]),
-lager:error("----------004, ~s", [Topic]),
+	lager:error("----------002, ~s", [Host]),
+	lager:error("----------003, ~s", [Port]),
+	lager:error("----------004, ~s", [Topic]),
 	application:load(ekaf),
 	application:set_env(ekaf, ekaf_bootstrap_broker, {Host, Port}),
 	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
@@ -129,7 +127,7 @@ unload() ->
 %% Internal function, send message to kafka
 produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
-	Topic = proplists:get_value("auth.kafka.topic", KafkaValue),
+	Topic = proplists:get_value(topic, KafkaValue),
     try ekaf:produce_async(Topic, list_to_binary(Json)) of 
 		_ -> lager:info("send to kafka success")
     catch _:Error ->
