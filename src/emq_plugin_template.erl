@@ -43,9 +43,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, userna
 								{clientid, ClientId},
 								{username, Username},
 								{ts, emqttd_time:now_secs()}]),
-	io:format(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>client 01"),
 	produce_to_kafka(Json),
-	io:format(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>client 02"),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
@@ -59,24 +57,25 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, user
     ok.
 
 on_session_created(ClientId, Username, _Env) ->
+	io:format("session(~s/~s) created.", [ClientId, Username]),
     Json = mochijson2:encode([{type, <<"session_created">>},
 								{clientid, ClientId},
 								{username, Username},
 								{ts, emqttd_time:now_secs()}]),
-	produce_to_kafka(Json),
-    io:format("session(~s/~s) created.", [ClientId, Username]).
+	produce_to_kafka(Json).
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
+	io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"session_terminated">>},
 								{clientid, ClientId},
 								{username, Username},
 							  	{reason, Reason},
 								{ts, emqttd_time:now_secs()}]),
-	produce_to_kafka(Json),
-    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]).
+	produce_to_kafka(Json).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
+	io:format("publish sys>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"),
     {ok, Message};
 
 on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
@@ -122,7 +121,7 @@ produce_to_kafka(Json) ->
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
 	
 	io:format("produce to kafka 111 ~p ~n", [BootstrapTopic]),
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"foo 123">>),
+%% 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"foo 123">>),
 	
 %% 	io:format("produce to kafka 222 ~p ~n", [BootstrapTopic]),
 %% 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
