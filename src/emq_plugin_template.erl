@@ -118,6 +118,6 @@ unload() ->
 produce_to_kafka(Data) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
-	Re = ekaf:produce_async(BootstrapTopic, Data),
+	Re = ekaf:produce_async(BootstrapTopic, list_to_binary(Data)),
 	io:format("==============Kafka response ~s~n", [Re]).
 
