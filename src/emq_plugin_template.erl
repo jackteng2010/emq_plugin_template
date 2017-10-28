@@ -100,12 +100,13 @@ on_message_acked(ClientId, Username, Message, _Env) ->
 ekaf_init(_Env) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	BootstrapBroker = proplists:get_value(bootstrap_broker, KafkaValue),
+	BootstrapPort = proplists:get_value(bootstrap_port, KafkaValue),
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
 	application:load(ekaf),
+    application:set_env(ekaf, ekaf_bootstrap_broker, {BootstrapBroker, BootstrapPort}),
 	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
-    application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init ekaf with ~p ~p ~n", [BootstrapBroker, BootstrapTopic]).
+    io:format("Init ekaf with ~p:~p ~p ~n", [BootstrapBroker, BootstrapPort, BootstrapTopic]).
 	
 %% Called when the plugin application stop
 unload() ->
