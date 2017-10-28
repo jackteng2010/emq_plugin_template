@@ -38,14 +38,14 @@ load(Env) ->
     emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, username = Username}, Env) ->
-	io:format("client ~s/~s connected ~n", [ClientId, Username]),
+	io:format("client ~s/~s connected, connack: ~w~n", [ClientId, Username, ConnAck]),
     Json = mochijson2:encode([{type, <<"connected">>},
 								{clientid, ClientId},
 								{username, Username},
 								{ts, emqttd_time:now_secs()}]),
-	io:format(">>>>>>client 01"),
+	io:format(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>client 01"),
 	produce_to_kafka(Json),
-	io:format(">>>>>>client 02"),
+	io:format(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>client 02"),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
@@ -85,7 +85,7 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
                         dup     = Dup,
                         topic   = Topic,
                         payload = Payload}, _Env) ->
-    io:format("publish ~s~n", [Payload]),
+    io:format("publish >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"),
     Json = mochijson2:encode([{type, <<"publish">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -124,11 +124,11 @@ produce_to_kafka(Json) ->
 	io:format("produce to kafka 111 ~p ~n", [BootstrapTopic]),
 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"foo 123">>),
 	
-	io:format("produce to kafka 222 ~p ~n", [BootstrapTopic]),
-	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, jsx:encode(Json)),
+%% 	io:format("produce to kafka 222 ~p ~n", [BootstrapTopic]),
+%% 	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)),
 	
-	io:format("produce to kafka 333 ~p ~n", [BootstrapTopic]),
-	Re = ekaf:produce_async(BootstrapTopic, jsx:encode(Json)),
+%% 	io:format("produce to kafka 333 ~p ~n", [BootstrapTopic]),
+%% 	Re = ekaf:produce_async(<<BootstrapTopic>>, list_to_binary(Json)),
 	
-	io:format("Kafka response ~s~n", [Re]).
-
+%% 	io:format("Kafka response ~s~n", [Re]).
+	io:format("Kafka response over").
