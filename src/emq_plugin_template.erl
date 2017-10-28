@@ -69,7 +69,6 @@ ekaf_init(_Env) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	Broker = proplists:get_value(bootstrap_broker, KafkaValue),
 	Topic = proplists:get_value(bootstrap_topic, KafkaValue),
-	
 	application:load(ekaf),
 	application:set_env(ekaf, ekaf_bootstrap_broker, Broker),
 	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
@@ -78,25 +77,25 @@ ekaf_init(_Env) ->
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s connected, connack: ~w~n", [ClientId, ConnAck]),
-	Json = mochijson2:encode([
-        {type, <<"connected">>},
-        {client_id, ClientId},
-        {cluster_node, node()},
-        {ts, emqttd_time:now_to_secs()}
-    ]),
-	produce_async_kafka(list_to_binary(Json)),
+%% 	Json = mochijson2:encode([
+%%         {type, <<"connected">>},
+%%         {client_id, ClientId},
+%%         {cluster_node, node()},
+%%         {ts, emqttd_time:now_to_secs()}
+%%     ]),
+%% 	produce_async_kafka(Json),
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _Env) ->
     io:format("client ~s disconnected, reason: ~w~n", [ClientId, Reason]),
-	Json = mochijson2:encode([
-        {type, <<"disconnected">>},
-        {client_id, ClientId},
-		{reason, Reason},
-        {cluster_node, node()},
-        {ts, emqttd_time:now_to_secs()}
-    ]),
-	produce_async_kafka(list_to_binary(Json)),
+%% 	Json = mochijson2:encode([
+%%         {type, <<"disconnected">>},
+%%         {client_id, ClientId},
+%% 		{reason, Reason},
+%%         {cluster_node, node()},
+%%         {ts, emqttd_time:now_to_secs()}
+%%     ]),
+%% 	produce_async_kafka(Json),
     ok.
 
 %% on_client_subscribe(ClientId, Username, TopicTable, _Env) ->
@@ -108,15 +107,15 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId}, _En
 %%     {ok, TopicTable}.
 
 on_session_created(ClientId, Username, _Env) ->
-    io:format("session(~s/~s) created.", [ClientId, Username]),
-	Json = mochijson2:encode([
-        {type, <<"session_created">>},
-        {client_id, ClientId},
-		{username, Username},
-        {cluster_node, node()},
-        {ts, emqttd_time:now_to_secs()}
-    ]),
-	produce_async_kafka(list_to_binary(Json)).
+    io:format("session(~s/~s) created.", [ClientId, Username]).
+%% 	Json = mochijson2:encode([
+%%         {type, <<"session_created">>},
+%%         {client_id, ClientId},
+%% 		{username, Username},
+%%         {cluster_node, node()},
+%%         {ts, emqttd_time:now_to_secs()}
+%%     ]),
+%% 	produce_async_kafka(Json).
 
 %% on_session_subscribed(ClientId, Username, {Topic, Opts}, _Env) ->
 %%     io:format("session(~s/~s) subscribed: ~p~n", [Username, ClientId, {Topic, Opts}]),
@@ -127,15 +126,15 @@ on_session_created(ClientId, Username, _Env) ->
 %%     ok.
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]),
-	Json = mochijson2:encode([
-        {type, <<"session_terminated">>},
-        {client_id, ClientId},
-		{username, Username},
-        {cluster_node, node()},
-        {ts, emqttd_time:now_to_secs()}
-    ]),
-	produce_async_kafka(list_to_binary(Json)).
+    io:format("session(~s/~s) terminated: ~p.", [ClientId, Username, Reason]).
+%% 	Json = mochijson2:encode([
+%%         {type, <<"session_terminated">>},
+%%         {client_id, ClientId},
+%% 		{username, Username},
+%%         {cluster_node, node()},
+%%         {ts, emqttd_time:now_to_secs()}
+%%     ]),
+%% 	produce_async_kafka(Json).
 
 %% transform message and return
 on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env) ->
@@ -155,12 +154,12 @@ on_message_publish(Message = #mqtt_message{topic = <<"$SYS/", _/binary>>}, _Env)
 %%         {cluster_node, node()},
 %%         {ts, emqttd_time:now_to_secs()}
 %%     ]),
-%% 	produce_async_kafka(list_to_binary(Json)),
+%% 	produce_async_kafka(Json),
 %%     {ok, Message}.
 on_message_publish(Message, _Env) ->
     io:format("publish ~s~n", [emqttd_message:format(Message)]),
-	Json = mochijson2:encode(Message),
-	produce_async_kafka(list_to_binary(Json)),
+%% 	Json = mochijson2:encode(Message),
+%% 	produce_async_kafka(Json),
     {ok, Message}.
 
 %% on_message_delivered(ClientId, Username, Message, _Env) ->
