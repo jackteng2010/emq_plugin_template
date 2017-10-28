@@ -38,7 +38,7 @@ load(Env) ->
     emqttd:hook('message.publish', fun ?MODULE:on_message_publish/2, [Env]).
 
 on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, username = Username}, Env) ->
-	io:format("client(~s/~s) connected, connack: ~w~n", [ClientId, Username, ConnAck]),
+	larger:info("client(~s/~s) connected, connack: ~w~n", [ClientId, Username, ConnAck]),
     Json = mochijson2:encode([{type, <<"connected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -47,7 +47,7 @@ on_client_connected(ConnAck, Client = #mqtt_client{client_id  = ClientId, userna
     {ok, Client}.
 
 on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, username = Username}, Env) ->
-    io:format("client(~s/~s) disconnected, reason: ~w~n", [ClientId, Username, Reason]),
+    larger:info("client(~s/~s) disconnected, reason: ~w.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"disconnected">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -57,7 +57,7 @@ on_client_disconnected(Reason, _Client = #mqtt_client{client_id = ClientId, user
     ok.
 
 on_session_created(ClientId, Username, _Env) ->
-	io:format("session(~s/~s) created ~n", [ClientId, Username]),
+	larger:info("client(~s/~s) created session.", [ClientId, Username]),
     Json = mochijson2:encode([{type, <<"session_created">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -65,7 +65,7 @@ on_session_created(ClientId, Username, _Env) ->
 	produce_to_kafka(Json).
 
 on_session_terminated(ClientId, Username, Reason, _Env) ->
-	io:format("session(~s/~s) terminated, reason: ~w~n", [ClientId, Username, Reason]),
+	larger:info("client(~s/~s) terminated, reason: ~w.", [ClientId, Username, Reason]),
     Json = mochijson2:encode([{type, <<"session_terminated">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -83,7 +83,7 @@ on_message_publish(Message = #mqtt_message{from = {ClientId, Username},
                         dup     = Dup,
                         topic   = Topic,
                         payload = Payload}, _Env) ->
-    io:format("session(~s/~s) publish message to topic(~s)~n", [ClientId, Username, Topic]),
+    larger:info("client(~s/~s) publish message with topic:~s", [ClientId, Username, Topic]),
     Json = mochijson2:encode([{type, <<"publish">>},
 								{clientid, ClientId},
 								{username, Username},
@@ -104,7 +104,7 @@ ekaf_init(_Env) ->
 	application:set_env(ekaf, ekaf_bootstrap_topics, BootstrapTopic),
     application:set_env(ekaf, ekaf_bootstrap_broker, BootstrapBroker),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init ekaf server with ~p ~p ~n", [BootstrapBroker, BootstrapTopic]).
+    larger:info("Init ekaf server with ~p ~p ~n", [BootstrapBroker, BootstrapTopic]).
 	
 %% Called when the plugin application stop
 unload() ->
