@@ -120,11 +120,15 @@ unload() ->
 produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	BootstrapTopic = proplists:get_value(bootstrap_topic, KafkaValue),
-	io:format("produce to kafka 111~p ~n", [BootstrapTopic]),
-	%% sync
-	ekaf:produce_sync(BootstrapTopic, <<"foo 123">>),
-	io:format("produce to kafka 222~p ~n", [BootstrapTopic]),
-
-	Re = ekaf:produce_async(BootstrapTopic, list_to_binary(Json)),
+	
+	io:format("produce to kafka 111 ~p ~n", [BootstrapTopic]),
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, <<"foo 123">>),
+	
+	io:format("produce to kafka 222 ~p ~n", [BootstrapTopic]),
+	ekaf:produce_sync(<<"tech-iot-device-gateway-2040">>, jsx:encode(Json)),
+	
+	io:format("produce to kafka 333 ~p ~n", [BootstrapTopic]),
+	Re = ekaf:produce_async(BootstrapTopic, jsx:encode(Json)),
+	
 	io:format("Kafka response ~s~n", [Re]).
 
