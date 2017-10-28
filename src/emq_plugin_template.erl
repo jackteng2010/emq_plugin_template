@@ -108,10 +108,10 @@ ekaf_init(_Env) ->
 	Topic = proplists:get_value(topic, KafkaValue),
 	
 	application:load(ekaf),
-	application:set_env(ekaf, ekaf_bootstrap_broker, {"10.253.11.192", 9092}),
-	application:set_env(ekaf, ekaf_bootstrap_topics, <<"tech-iot-device-gateway-2040">>),
+	application:set_env(ekaf, ekaf_bootstrap_broker, {Host, Port}),
+	application:set_env(ekaf, ekaf_bootstrap_topics, Topic),
 	{ok, _} = application:ensure_all_started(ekaf),
-    io:format("Init ekaf server with ~s", [Host]).
+    io:format("Init ekaf server with ~s~n", [{Host, Port}]).
 	
 %% Called when the plugin application stop
 unload() ->
@@ -125,8 +125,8 @@ unload() ->
 produce_to_kafka(Json) ->
 	{ok, KafkaValue} = application:get_env(emq_plugin_template, kafka),
 	Topic = proplists:get_value(topic, KafkaValue),
-    try ekaf:produce_async(<<"tech-iot-device-gateway-2040">>, list_to_binary(Json)) of 
-		_ -> lager:info("send to kafka success")
+    try ekaf:produce_async(Topic, list_to_binary(Json)) of 
+		_ -> io:format("send to kafka success. ~n")
     catch _:Error ->
         lager:error("can't send to kafka error: ~s", [Error])
     end.
